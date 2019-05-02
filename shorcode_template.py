@@ -2,15 +2,15 @@ from typing import List
 import numpy as np
 
 from pyquil import Program
-from pyquil.gates import MEASURE, I
+from pyquil.gates import MEASURE, I, CNOT
 from pyquil.quil import address_qubits
 from pyquil.quilatom import QubitPlaceholder
 from pyquil.api import QVMConnection
 
 ##
 ############# YOU MUST COMMENT OUT THESE TWO LINES FOR IT TO WORK WITH THE AUTOGRADER
-# import subprocess
-# subprocess.Popen("/src/qvm/qvm -S > qvm.log 2>&1", shell=True)
+import subprocess
+subprocess.Popen("/src/qvm/qvm -S > qvm.log 2>&1", shell=True)
 
 
 # Do not change this SEED value you or your autograder score will be incorrect.
@@ -32,28 +32,54 @@ def depolarizing_channel(prob: float):
 
 
 def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
-
+    
     ### Do your encoding step here
-    code_register = None  # the List[QubitPlaceholder] of the qubits you have encoded into
-    pq = None  # the Program that does the encoding
-
+    q0 = QubitPlaceholder()
+    q1 = QubitPlaceholder()
+    a0 = QubitPlaceholder()
+    a1 = QubitPlaceholder()
+    code_register = [qubit, q0, q1, a0, a1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
+    # the Program that does the encoding
+    
     # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
     if noise is None:
         pq += [I(qq) for qq in code_register]
     else:
         pq += noise(code_register)
-
-
+    
+    
     ### Do your decoding and correction steps here
+    ro = pq.declare('ro', 'BIT', 2)
+
+    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
+    pq = pq + MEASURE(code_register[3], ro[0])
+    
+    pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
+    pq = pq + MEASURE(code_register[4], ro[1])
+    
+    if ro[0] == 1 and ro[1] == 1:
+        pq += X(code_register[1])
+    
+    elif ro[0] == 1 and ro[1] == 0:
+        pq += X(code_register[1])
+    
+    elif ro[0] == 0 and ro[1] == 1:
+        pq += X(code_register[2])
 
     return pq, code_register
 
 
+
 def phase_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
     ### Do your encoding step here
-    code_register = None  # the List[QubitPlaceholder] of the qubits you have encoded into
-    pq = None  # the Program that does the encoding
-
+    q0 = QubitPlaceholder()
+    q1 = QubitPlaceholder()
+    a0 = QubitPlaceholder()
+    a1 = QubitPlaceholder()
+    code_register = [qubit, q0, q1, a0, a1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
+    pq += (H(q) for q in code_register[:3])
     # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
     if noise is None:
         pq += [I(qq) for qq in code_register]
@@ -61,14 +87,77 @@ def phase_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlace
         pq += noise(code_register)
 
     ### Do your decoding and correction steps here
+    pq += (H(q) for q in code_register[:3])
+    ro = pq.declare('ro', 'BIT', 2)
+    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
+    pq = pq + MEASURE(code_register[3], ro[0])
+
+    pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
+    pq = pq + MEASURE(code_register[4], ro[1])
+
+    if ro[0] == 1 and ro[1] == 1:
+        pq += X(code_register[1])
+
+    elif ro[0] == 1 and ro[1] == 0:
+        pq += X(code_register[1])
+    
+    elif ro[0] == 0 and ro[1] == 1:
+        pq += X(code_register[2])
 
     return pq, code_register
 
 
 def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
-    # Note that in order for this code to work properly, you must build your Shor code using the phase code and
-    # bit code methods above
-    pass
+    
+    q0 = QubitPlaceholder()
+    q1 = QubitPlaceholder()
+    q00 = QubitPlaceholder()
+    q01 = QubitPlaceholder()
+    q10 = QubitPlaceholder()
+    q11 = QubitPlaceholder()
+    q20 = QubitPlaceholder()
+    q21 = QubitPlaceholder()
+    a0 = QubitPlaceholder()
+    a1 = QubitPlaceholder()
+    a2 = QubitPlaceholder()
+    a3 = QubitPlaceholder()
+    a4 = QubitPlaceholder()
+    a5 = QubitPlaceholder()
+    
+    code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q21]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    #encode qubit q0 q1
+    pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
+    
+    #encode qubit q00 q01
+    pq = Program(CNOT(code_register[1], code_register[3]), CNOT(code_register[1], code_register[4]))
+    pq = Program(CNOT(code_register[2], code_register[5]), CNOT(code_register[2], code_register[6]))
+
+    pq += (H(q) for q in code_register[:3])
+    # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
+    if noise is None:
+        pq += [I(qq) for qq in code_register]
+    else:
+        pq += noise(code_register)
+
+    ### Do your decoding and correction steps here
+    pq += (H(q) for q in code_register[:3])
+    ro = pq.declare('ro', 'BIT', 2)
+    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
+    pq = pq + MEASURE(code_register[3], ro[0])
+
+pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
+pq = pq + MEASURE(code_register[4], ro[1])
+
+if ro[0] == 1 and ro[1] == 1:
+    pq += X(code_register[1])
+    
+    elif ro[0] == 1 and ro[1] == 0:
+        pq += X(code_register[1])
+    
+    elif ro[0] == 0 and ro[1] == 1:
+        pq += X(code_register[2])
+
+return pq, code_register
 
 
 def run_code(error_code, noise, trials=10):
