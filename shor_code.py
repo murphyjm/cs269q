@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 
 from pyquil import Program
-from pyquil.gates import MEASURE, I, CNOT
+from pyquil.gates import MEASURE, H, I, CNOT
 from pyquil.quil import address_qubits
 from pyquil.quilatom import QubitPlaceholder
 from pyquil.api import QVMConnection
@@ -50,10 +50,10 @@ def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceho
 
 
     ### Do your decoding and correction steps here
-    ro = pq.declare('ro', 'BIT', 2)
+    ro = pq.declare('ro1', 'BIT', 2)
 
-pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
-pq = pq + MEASURE(code_register[3], ro[0])
+    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
+    pq = pq + MEASURE(code_register[3], ro[0])
 
     pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
     pq = pq + MEASURE(code_register[4], ro[1])
@@ -61,13 +61,13 @@ pq = pq + MEASURE(code_register[3], ro[0])
     if ro[0] == 1 and ro[1] == 1:
         pq += X(code_register[1])
 
-elif ro[0] == 1 and ro[1] == 0:
-    pq += X(code_register[0])
+    elif ro[0] == 1 and ro[1] == 0:
+        pq += X(code_register[0])
     
     elif ro[0] == 0 and ro[1] == 1:
         pq += X(code_register[2])
 
-return pq, code_register
+    return pq, code_register
 
 
 
@@ -88,23 +88,23 @@ def phase_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlace
 
     ### Do your decoding and correction steps here
     pq += (H(q) for q in code_register[:3])
-    ro = pq.declare('ro', 'BIT', 2)
+    ro1 = pq.declare('ro', 'BIT', 2)
     pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
-    pq = pq + MEASURE(code_register[3], ro[0])
+    pq = pq + MEASURE(code_register[3], ro1[0])
 
-pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
-pq = pq + MEASURE(code_register[4], ro[1])
+    pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
+    pq = pq + MEASURE(code_register[4], ro1[1])
 
-if ro[0] == 1 and ro[1] == 1:
-    pq += X(code_register[1])
+    if ro1[0] == 1 and ro1[1] == 1:
+        pq += X(code_register[1])
     
-    elif ro[0] == 1 and ro[1] == 0:
+    elif ro1[0] == 1 and ro1[1] == 0:
         pq += X(code_register[0])
     
-    elif ro[0] == 0 and ro[1] == 1:
+    elif ro1[0] == 0 and ro1[1] == 1:
         pq += X(code_register[2])
 
-return pq, code_register
+    return pq, code_register
 
 
 def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
@@ -117,12 +117,14 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     q11 = QubitPlaceholder()
     q20 = QubitPlaceholder()
     q21 = QubitPlaceholder()
-    a0 = QubitPlaceholder()
-    a1 = QubitPlaceholder()
-    a2 = QubitPlaceholder()
-    a3 = QubitPlaceholder()
-    a4 = QubitPlaceholder()
-    a5 = QubitPlaceholder()
+    a00 = QubitPlaceholder()
+    a01 = QubitPlaceholder()
+    a10 = QubitPlaceholder()
+    a11 = QubitPlaceholder()
+    a20 = QubitPlaceholder()
+    a21 = QubitPlaceholder()
+    b0 = QubitPlaceholder()
+    b1 = QubitPlaceholder()
     
     code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q21, a00, a01, a10, a11, a20, a21, b0, b1]  # the List[QubitPlaceholder] of the qubits you have encoded into
     #encode qubit q0 q1
@@ -143,9 +145,8 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     
     
     '''
-        FIND BIT ERRORS
-        
-        '''
+    FIND BIT ERRORS
+    '''
     #parity [qubit, q00] a00
     pq += Program(CNOT(code_register[0], code_register[9]), CNOT(code_register[3], code_register[9]))
     pq = pq + MEASURE(code_register[9], ro[0])
@@ -171,8 +172,8 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     pq += Program(CNOT(code_register[5], code_register[12]), CNOT(code_register[6], code_register[12]))
     pq = pq + MEASURE(code_register[12], ro[3])
 
-if ro[2] == 1 and ro[3] == 1:
-    pq += X(code_register[5])
+    if ro[2] == 1 and ro[3] == 1:
+        pq += X(code_register[5])
     
     elif ro[2] == 1 and ro[3] == 0:
         pq += X(code_register[1])
@@ -180,9 +181,9 @@ if ro[2] == 1 and ro[3] == 1:
     elif ro[2] == 0 and ro[3] == 1:
         pq += X(code_register[6])
 
-#parity [q1, q21] a20
-pq += Program(CNOT(code_register[2], code_register[13]), CNOT(code_register[7], code_register[13]))
-pq = pq + MEASURE(code_register[13], ro[4])
+    #parity [q1, q21] a20
+    pq += Program(CNOT(code_register[2], code_register[13]), CNOT(code_register[7], code_register[13]))
+    pq = pq + MEASURE(code_register[13], ro[4])
 
     #parity [q21, q22] a21
     pq += Program(CNOT(code_register[7], code_register[14]), CNOT(code_register[8], code_register[14]))
@@ -198,8 +199,8 @@ pq = pq + MEASURE(code_register[13], ro[4])
         pq += X(code_register[8])
     
     '''
-        FIND BIT ERRORS
-        '''
+    FIND BIT ERRORS
+    '''
     pq += (H(q) for q in code_register[:9])
     
     #parity [qubit, q00, q01, q0, q10, q11] b0
@@ -225,7 +226,7 @@ pq = pq + MEASURE(code_register[13], ro[4])
 def run_code(error_code, noise, trials=10):
     """ Takes in an error_code function (e.g. bit_code, phase_code or shor) and runs this code on the QVM"""
     pq, code_register = error_code(QubitPlaceholder(), noise=noise)
-    ro = pq.declare('ro', 'BIT', len(code_register))
+    ro = pq.declare('ro2', 'BIT', len(code_register))
     pq += [MEASURE(qq, rr) for qq, rr in zip(code_register, ro)]
     
     return qvm.run(address_qubits(pq), trials=trials)
@@ -248,7 +249,7 @@ def simulate_code(kraus_operators, trials, error_code) -> int:
         noise_data.define_noisy_gate("I", [qq], kraus_ops)
     pq = noise_data + pq
 
-# Run the simulation trials times using the QVM and check how many times it did not work
-# return that as the score. E.g. if it always corrected back to the 0 state then it should return 0.
-score = None
+    # Run the simulation trials times using the QVM and check how many times it did not work
+    # return that as the score. E.g. if it always corrected back to the 0 state then it should return 0.
+    score = None
     return score
