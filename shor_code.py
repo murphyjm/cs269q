@@ -24,11 +24,16 @@ def bit_flip_channel(prob: float):
 
 
 def phase_flip_channel(prob: float):
-    pass
+    noisy_I = np.sqrt(1-prob) * np.asarray([[1, 0], [0, 1]])
+    noisy_Z = np.sqrt(prob) * np.asarray([[1, 0], [0, -1]])
+    return [noisy_I, noisy_Z]
 
 
 def depolarizing_channel(prob: float):
-    pass
+    noisy_I = np.sqrt(1-prob) * np.asarray([[1, 0], [0, 1]])
+    noisy_X = np.sqrt(prob) * np.asarray([[0, 1], [1, 0]])
+    noisy_Z = np.sqrt(prob) * np.asarray([[1, 0], [0, -1]])
+    return [noisy_I, noisy_X, noisy_Z]
 
 
 def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
@@ -38,8 +43,8 @@ def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceho
     q1 = QubitPlaceholder()
     a0 = QubitPlaceholder()
     a1 = QubitPlaceholder()
-    code_register = [qubit, q0, q1, a0, a1]  # the List[QubitPlaceholder] of the qubits you have encoded into
-    pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
+    code_register = [qubit, q0, q1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    pq = Program(CNOT(code_register[0], code_register[1]), CNOT(qubit, code_register[2]))
     # the Program that does the encoding
     
     # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
@@ -50,21 +55,21 @@ def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceho
 
 
     ### Do your decoding and correction steps here
-    ro = pq.declare('ro1', 'BIT', 2)
+    flip = pq.declare('flip', 'BIT', 2)
 
-    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
-    pq = pq + MEASURE(code_register[3], ro[0])
+    pq += Program(CNOT(code_register[0], a0), CNOT(code_register[1], a0))
+    pq = pq + MEASURE(a0, flip[0])
 
-    pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
-    pq = pq + MEASURE(code_register[4], ro[1])
+    pq += Program(CNOT(code_register[1], a1), CNOT(code_register[2], a1))
+    pq = pq + MEASURE(a1, flip[1])
     
-    if ro[0] == 1 and ro[1] == 1:
+    if flip[0] == 1 and flip[1] == 1:
         pq += X(code_register[1])
 
-    elif ro[0] == 1 and ro[1] == 0:
+    elif flip[0] == 1 and flip[1] == 0:
         pq += X(code_register[0])
     
-    elif ro[0] == 0 and ro[1] == 1:
+    elif flip[0] == 0 and flip[1] == 1:
         pq += X(code_register[2])
 
     return pq, code_register
@@ -77,7 +82,7 @@ def phase_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlace
     q1 = QubitPlaceholder()
     a0 = QubitPlaceholder()
     a1 = QubitPlaceholder()
-    code_register = [qubit, q0, q1, a0, a1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    code_register = [qubit, q0, q1]  # the List[QubitPlaceholder] of the qubits you have encoded into
     pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
     pq += (H(q) for q in code_register[:3])
     # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
@@ -88,20 +93,20 @@ def phase_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlace
 
     ### Do your decoding and correction steps here
     pq += (H(q) for q in code_register[:3])
-    ro1 = pq.declare('ro', 'BIT', 2)
-    pq += Program(CNOT(code_register[0], code_register[3]), CNOT(code_register[1], code_register[3]))
-    pq = pq + MEASURE(code_register[3], ro1[0])
+    phase = pq.declare('phase', 'BIT', 2)
+    pq += Program(CNOT(code_register[0], a0), CNOT(code_register[1], a0))
+    pq = pq + MEASURE(a0, phase[0])
 
-    pq += Program(CNOT(code_register[1], code_register[4]), CNOT(code_register[2], code_register[4]))
-    pq = pq + MEASURE(code_register[4], ro1[1])
+    pq += Program(CNOT(code_register[1], a1), CNOT(code_register[2], a1))
+    pq = pq + MEASURE(a1, phase[1])
 
-    if ro1[0] == 1 and ro1[1] == 1:
+    if phase[0] == 1 and phase[1] == 1:
         pq += X(code_register[1])
     
-    elif ro1[0] == 1 and ro1[1] == 0:
+    elif phase[0] == 1 and phase[1] == 0:
         pq += X(code_register[0])
     
-    elif ro1[0] == 0 and ro1[1] == 1:
+    elif phase[0] == 0 and phase[1] == 1:
         pq += X(code_register[2])
 
     return pq, code_register
@@ -141,7 +146,7 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     #encode q1 q20 q21
     pq = Program(CNOT(code_register[2], code_register[7]), CNOT(code_register[2], code_register[8]))
     
-    ro = pq.declare('ro', 'BIT', 8)
+    roS = pq.declare('roS', 'BIT', 8)
     
     
     '''
@@ -149,53 +154,53 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     '''
     #parity [qubit, q00] a00
     pq += Program(CNOT(code_register[0], code_register[9]), CNOT(code_register[3], code_register[9]))
-    pq = pq + MEASURE(code_register[9], ro[0])
+    pq = pq + MEASURE(code_register[9], roS[0])
     
     #parity [q00, q01] a01
     pq += Program(CNOT(code_register[3], code_register[10]), CNOT(code_register[4], code_register[10]))
-    pq = pq + MEASURE(code_register[10], ro[1])
+    pq = pq + MEASURE(code_register[10], roS[1])
     
-    if ro[0] == 1 and ro[1] == 1:
+    if roS[0] == 1 and roS[1] == 1:
         pq += X(code_register[3])
     
-    elif ro[0] == 1 and ro[1] == 0:
+    elif roS[0] == 1 and roS[1] == 0:
         pq += X(code_register[0])
     
-    elif ro[0] == 0 and ro[1] == 1:
+    elif roS[0] == 0 and roS[1] == 1:
         pq += X(code_register[4])
 
     #parity [q0, q10] a10
     pq += Program(CNOT(code_register[1], code_register[11]), CNOT(code_register[5], code_register[11]))
-    pq = pq + MEASURE(code_register[11], ro[2])
+    pq = pq + MEASURE(code_register[11], roS[2])
 
     #parity [q10, q11] a11
     pq += Program(CNOT(code_register[5], code_register[12]), CNOT(code_register[6], code_register[12]))
-    pq = pq + MEASURE(code_register[12], ro[3])
+    pq = pq + MEASURE(code_register[12], roS[3])
 
-    if ro[2] == 1 and ro[3] == 1:
+    if roS[2] == 1 and roS[3] == 1:
         pq += X(code_register[5])
     
-    elif ro[2] == 1 and ro[3] == 0:
+    elif roS[2] == 1 and roS[3] == 0:
         pq += X(code_register[1])
     
-    elif ro[2] == 0 and ro[3] == 1:
+    elif roS[2] == 0 and roS[3] == 1:
         pq += X(code_register[6])
 
     #parity [q1, q21] a20
     pq += Program(CNOT(code_register[2], code_register[13]), CNOT(code_register[7], code_register[13]))
-    pq = pq + MEASURE(code_register[13], ro[4])
+    pq = pq + MEASURE(code_register[13], roS[4])
 
     #parity [q21, q22] a21
     pq += Program(CNOT(code_register[7], code_register[14]), CNOT(code_register[8], code_register[14]))
-    pq = pq + MEASURE(code_register[14], ro[5])
+    pq = pq + MEASURE(code_register[14], roS[5])
     
-    if ro[4] == 1 and ro[5] == 1:
+    if roS[4] == 1 and roS[5] == 1:
         pq += X(code_register[7])
     
-    elif ro[4] == 1 and ro[5] == 0:
+    elif roS[4] == 1 and roS[5] == 0:
         pq += X(code_register[2])
 
-    elif ro[4] == 0 and ro[5] == 1:
+    elif roS[4] == 0 and roS[5] == 1:
         pq += X(code_register[8])
     
     '''
@@ -205,19 +210,19 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     
     #parity [qubit, q00, q01, q0, q10, q11] b0
     pq += Program(CNOT(code_register[0], code_register[15]), CNOT(code_register[3], code_register[15]), CNOT(code_register[4], code_register[15]), CNOT(code_register[1], code_register[15]), CNOT(code_register[5], code_register[15]), CNOT(code_register[6], code_register[15]))
-    pq = pq + MEASURE(code_register[15], ro[6])
+    pq = pq + MEASURE(code_register[15], roS[6])
     
     #parity [q0, q10, q11, q1, q20, q21] b1
     pq += Program(CNOT(code_register[1], code_register[16]), CNOT(code_register[5], code_register[16]), CNOT(code_register[6], code_register[16]), CNOT(code_register[2], code_register[16]), CNOT(code_register[7], code_register[16]), CNOT(code_register[8], code_register[16]))
-    pq = pq + MEASURE(code_register[16], ro[7])
+    pq = pq + MEASURE(code_register[16], roS[7])
     
-    if ro[6] == 1 and ro[7] == 1:
+    if roS[6] == 1 and roS[7] == 1:
         pq += X(code_register[1])
     
-    elif ro[6] == 1 and ro[7] == 0:
+    elif roS[6] == 1 and roS[7] == 0:
         pq += X(code_register[0])
     
-    elif ro[6] == 0 and ro[7] == 1:
+    elif roS[6] == 0 and roS[7] == 1:
         pq += X(code_register[2])
     
     return pq, code_register
@@ -226,7 +231,7 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
 def run_code(error_code, noise, trials=10):
     """ Takes in an error_code function (e.g. bit_code, phase_code or shor) and runs this code on the QVM"""
     pq, code_register = error_code(QubitPlaceholder(), noise=noise)
-    ro = pq.declare('ro2', 'BIT', len(code_register))
+    ro = pq.declare('ro', 'BIT', len(code_register))
     pq += [MEASURE(qq, rr) for qq, rr in zip(code_register, ro)]
     
     return qvm.run(address_qubits(pq), trials=trials)
