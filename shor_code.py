@@ -33,7 +33,7 @@ def depolarizing_channel(prob: float):
     noisy_I = np.sqrt(1-prob) * np.asarray([[1, 0], [0, 1]])
     noisy_X = np.sqrt(prob/3) * np.asarray([[0, 1], [1, 0]])
     noisy_Z = np.sqrt(prob/3) * np.asarray([[1, 0], [0, -1]])
-    noisy_Y = np.sqrt(prob/3) * np.asarray([[0, -1], [1, 0]])
+    noisy_Y = np.sqrt(prob/3) * np.asarray([[0, 0-1.0j], [0+1.0j, 0]])
     return [noisy_I, noisy_X, noisy_Y, noisy_Z]
 
 
@@ -163,7 +163,7 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     b0 = QubitPlaceholder()
     b1 = QubitPlaceholder()
     
-    code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q21]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q210]  # the List[QubitPlaceholder] of the qubits you have encoded into
     #encode qubit q0 q1
     pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
     
@@ -223,7 +223,7 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     pq = pq + MEASURE(a20, roS[4])
 
     #parity [q21, q22] a21
-    pq += Program(CNOT(code_register[7], a21), CNOT(code_register[8], a21)
+    pq += Program(CNOT(code_register[7], a21), CNOT(code_register[8], a21))
     pq = pq + MEASURE(a21, roS[5])
     
     if roS[4] == 1 and roS[5] == 1:
