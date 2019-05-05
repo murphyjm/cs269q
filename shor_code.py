@@ -31,9 +31,10 @@ def phase_flip_channel(prob: float):
 
 def depolarizing_channel(prob: float):
     noisy_I = np.sqrt(1-prob) * np.asarray([[1, 0], [0, 1]])
-    noisy_X = np.sqrt(prob) * np.asarray([[0, 1], [1, 0]])
-    noisy_Z = np.sqrt(prob) * np.asarray([[1, 0], [0, -1]])
-    return [noisy_I, noisy_X, noisy_Z]
+    noisy_X = np.sqrt(prob/3) * np.asarray([[0, 1], [1, 0]])
+    noisy_Z = np.sqrt(prob/3) * np.asarray([[1, 0], [0, -1]])
+    noisy_Y = np.sqrt(prob/3) * np.asarray([[0, -1], [1, 0]])
+    return [noisy_I, noisy_X, noisy_Y, noisy_Z]
 
 
 def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder]):
@@ -44,6 +45,36 @@ def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceho
     a0 = QubitPlaceholder()
     a1 = QubitPlaceholder()
     code_register = [qubit, q0, q1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    pq = Program(CNOT(qubit, q0), CNOT(qubit, q1))
+    # the Program that does the encoding
+    
+    # DON'T CHANGE THIS CODE BLOCK. It applies the errors for simulations
+    if noise is None:
+        pq += [I(qq) for qq in code_register]
+    else:
+        pq += noise(code_register)
+
+
+    ### Do your decoding and correction steps here
+    flip = pq.declare('flip', 'BIT', 2)
+
+    pq += Program(CNOT(qubit, a0), CNOT(q0, a0))
+    pq = pq + MEASURE(a0, flip[0])
+
+    pq += Program(CNOT(q0, a1), CNOT(q1, a1))
+    pq = pq + MEASURE(a1, flip[1])
+
+    if flip[0] == 1 and flip[1] == 1:
+        pq += X(q0)
+
+    elif flip[0] == 1 and flip[1] == 0:
+        pq += X(qubit)
+    
+    elif flip[0] == 0 and flip[1] == 1:
+        pq += X(q1)
+    code_register = [qubit, q0, q1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    return pq, code_register
+    '''
     pq = Program(CNOT(code_register[0], code_register[1]), CNOT(qubit, code_register[2]))
     # the Program that does the encoding
     
@@ -73,6 +104,7 @@ def bit_code(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceho
         pq += X(code_register[2])
 
     return pq, code_register
+    '''
 
 
 
@@ -131,7 +163,7 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     b0 = QubitPlaceholder()
     b1 = QubitPlaceholder()
     
-    code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q21, a00, a01, a10, a11, a20, a21, b0, b1]  # the List[QubitPlaceholder] of the qubits you have encoded into
+    code_register = [qubit, q0, q1, q00, q01, q10, q11, q20, q21]  # the List[QubitPlaceholder] of the qubits you have encoded into
     #encode qubit q0 q1
     pq = Program(CNOT(code_register[0], code_register[1]), CNOT(code_register[0], code_register[2]))
     
@@ -153,12 +185,12 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     FIND BIT ERRORS
     '''
     #parity [qubit, q00] a00
-    pq += Program(CNOT(code_register[0], code_register[9]), CNOT(code_register[3], code_register[9]))
-    pq = pq + MEASURE(code_register[9], roS[0])
+    pq += Program(CNOT(code_register[0], a00), CNOT(code_register[3], a00))
+    pq = pq + MEASURE(a00, roS[0])
     
     #parity [q00, q01] a01
-    pq += Program(CNOT(code_register[3], code_register[10]), CNOT(code_register[4], code_register[10]))
-    pq = pq + MEASURE(code_register[10], roS[1])
+    pq += Program(CNOT(code_register[3], a01), CNOT(code_register[4], a10))
+    pq = pq + MEASURE(a01, roS[1])
     
     if roS[0] == 1 and roS[1] == 1:
         pq += X(code_register[3])
@@ -170,12 +202,12 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
         pq += X(code_register[4])
 
     #parity [q0, q10] a10
-    pq += Program(CNOT(code_register[1], code_register[11]), CNOT(code_register[5], code_register[11]))
-    pq = pq + MEASURE(code_register[11], roS[2])
+    pq += Program(CNOT(code_register[1], a10), CNOT(code_register[5], a10))
+    pq = pq + MEASURE(a10, roS[2])
 
     #parity [q10, q11] a11
-    pq += Program(CNOT(code_register[5], code_register[12]), CNOT(code_register[6], code_register[12]))
-    pq = pq + MEASURE(code_register[12], roS[3])
+    pq += Program(CNOT(code_register[5], a11), CNOT(code_register[6], a11))
+    pq = pq + MEASURE(a11, roS[3])
 
     if roS[2] == 1 and roS[3] == 1:
         pq += X(code_register[5])
@@ -187,12 +219,12 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
         pq += X(code_register[6])
 
     #parity [q1, q21] a20
-    pq += Program(CNOT(code_register[2], code_register[13]), CNOT(code_register[7], code_register[13]))
-    pq = pq + MEASURE(code_register[13], roS[4])
+    pq += Program(CNOT(code_register[2], a20), CNOT(code_register[7], a20))
+    pq = pq + MEASURE(a20, roS[4])
 
     #parity [q21, q22] a21
-    pq += Program(CNOT(code_register[7], code_register[14]), CNOT(code_register[8], code_register[14]))
-    pq = pq + MEASURE(code_register[14], roS[5])
+    pq += Program(CNOT(code_register[7], a21), CNOT(code_register[8], a21)
+    pq = pq + MEASURE(a21, roS[5])
     
     if roS[4] == 1 and roS[5] == 1:
         pq += X(code_register[7])
@@ -209,12 +241,12 @@ def shor(qubit: QubitPlaceholder, noise=None) -> (Program, List[QubitPlaceholder
     pq += (H(q) for q in code_register[:9])
     
     #parity [qubit, q00, q01, q0, q10, q11] b0
-    pq += Program(CNOT(code_register[0], code_register[15]), CNOT(code_register[3], code_register[15]), CNOT(code_register[4], code_register[15]), CNOT(code_register[1], code_register[15]), CNOT(code_register[5], code_register[15]), CNOT(code_register[6], code_register[15]))
-    pq = pq + MEASURE(code_register[15], roS[6])
+    pq += Program(CNOT(code_register[0], b0), CNOT(code_register[3], b0), CNOT(code_register[4], b0), CNOT(code_register[1], b0), CNOT(code_register[5], b0), CNOT(code_register[6], b0))
+    pq = pq + MEASURE(b0, roS[6])
     
     #parity [q0, q10, q11, q1, q20, q21] b1
-    pq += Program(CNOT(code_register[1], code_register[16]), CNOT(code_register[5], code_register[16]), CNOT(code_register[6], code_register[16]), CNOT(code_register[2], code_register[16]), CNOT(code_register[7], code_register[16]), CNOT(code_register[8], code_register[16]))
-    pq = pq + MEASURE(code_register[16], roS[7])
+    pq += Program(CNOT(code_register[1], b1), CNOT(code_register[5], b1), CNOT(code_register[6], b1), CNOT(code_register[2], b1), CNOT(code_register[7], b1), CNOT(code_register[8], b1))
+    pq = pq + MEASURE(b1, roS[7])
     
     if roS[6] == 1 and roS[7] == 1:
         pq += X(code_register[1])
