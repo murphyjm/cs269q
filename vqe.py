@@ -17,14 +17,13 @@ def solve_vqe(hamiltonian: PauliSum) -> float:
     '''
     Can assume that the PauliSum hamiltonian is defined on at most 5 qubits.
     '''
-
     # Hyperparameters
     NUM_LAYERS = 5 # Number of ansatz layers
 
     # Returns a list of the qubit indices which the PauliSum acts on
     qubits = hamiltonian.get_qubits()
     num_qubits = len(qubits)
-
+    
     # Initialize theta
     theta = init_theta(num_qubits, NUM_LAYERS)
     min_result = minimize(expectation, np.asarray(theta.flat), args=(num_qubits, NUM_LAYERS, hamiltonian), method='Nelder-Mead')
